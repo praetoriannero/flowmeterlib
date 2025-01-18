@@ -1,3 +1,4 @@
+use std::fmt;
 use pcap;
 
 pub fn list_devices() {
@@ -6,9 +7,14 @@ pub fn list_devices() {
     }
 }
 
-pub type HwAddress = [u8; 6];
-pub type IPv4Address = [u8; 4];
-pub type IPv6Address = [u8; 6];
+#[derive(Debug, Clone)]
+pub struct HwAddress([u8; 6]);
+
+#[derive(Debug, Clone)]
+pub struct IPv4Address([u8; 4]);
+
+#[derive(Debug, Clone)]
+pub struct IPv6Address([u8; 6]);
 
 #[derive(Debug, Clone)]
 pub enum IPAddress {
@@ -28,6 +34,20 @@ pub struct Netflow {
     transport_proto: u8,
 }
 
+impl fmt::Display for HwAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,
+            "{:X?}:{:X?}:{:X?}:{:X?}:{:X?}:{:X?}",
+            self.0[0],
+            self.0[1],
+            self.0[2],
+            self.0[3],
+            self.0[4],
+            self.0[5]
+        )
+    }
+}
+
 impl Netflow {
     pub fn to_string(&self) -> String {
         format!(
@@ -41,6 +61,11 @@ impl Netflow {
             self.vlan_id,
             self.transport_proto
         )
+    }
+
+    pub fn array_test(self) {
+        let new_mac: HwAddress = HwAddress([0, 0, 0, 0, 0, 0]);
+        println!("{:?}", new_mac);
     }
 }
 
