@@ -1,5 +1,7 @@
 use std::fmt;
 use pcap;
+use pnet::packet::{ethernet::EthernetPacket, Packet};
+use pnet::packet::ipv4::Ipv4Packet;
 
 pub fn list_devices() {
     for device in pcap::Device::list().expect("device lookup failed!") {
@@ -23,7 +25,7 @@ pub enum IPAddress {
 }
 
 #[derive(Debug, Clone)]
-pub struct Netflow {
+pub struct FlowID {
     src_mac: HwAddress,
     dst_mac: HwAddress,
     src_ip: IPAddress,
@@ -74,7 +76,7 @@ impl fmt::Display for HwAddress {
     }
 }
 
-impl Netflow {
+impl FlowID {
     pub fn to_string(&self) -> String {
         format!(
             "{:?}-{:?}-{:?}-{:?}-{:?}-{:?}-{:?}-{:?}",
@@ -96,7 +98,26 @@ impl Netflow {
 }
 
 pub struct FlowStats {
-    
+
+}
+
+pub struct Meter<T: pcap::State> {
+    handle: pcap::Capture<T>,
+    flow_cache: std::collections::HashMap<FlowID, FlowStats>,
+}
+
+impl<T: pcap::State> Meter<T> {
+    pub fn consume(buf: &[u8]) {
+        let eth_pdu: Option<EthernetPacket<'_>> = EthernetPacket::new(buf);
+        if let Some(eth_pdu) = eth_pdu {
+            // can we check the underlying ethernet type??
+            // would save us some headache about trying out a bunch of different options
+            let ip_pdu: Option<Ipv4Packet<'_>> = Ipv4Packet::new(eth_pdu.payload());
+            // build ipv4 flow id
+            if ip_pdu.is_some() {}
+            
+        }
+    }
 }
 
 #[cfg(test)]
