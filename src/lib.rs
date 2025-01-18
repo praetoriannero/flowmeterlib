@@ -34,6 +34,32 @@ pub struct Netflow {
     transport_proto: u8,
 }
 
+impl fmt::Display for IPv4Address {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,
+            "{:?}.{:?}.{:?}.{:?}",
+            self.0[0],
+            self.0[1],
+            self.0[2],
+            self.0[3],
+        )
+    }
+}
+
+impl fmt::Display for IPv6Address {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,
+            "{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
+            self.0[0],
+            self.0[1],
+            self.0[2],
+            self.0[3],
+            self.0[4],
+            self.0[5],
+        )
+    }
+}
+
 impl fmt::Display for HwAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
@@ -67,6 +93,10 @@ impl Netflow {
         let new_mac: HwAddress = HwAddress([0, 0, 0, 0, 0, 0]);
         println!("{:?}", new_mac);
     }
+}
+
+pub struct FlowStats {
+    
 }
 
 #[cfg(test)]
