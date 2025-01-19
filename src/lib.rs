@@ -1,5 +1,6 @@
 use std::fmt;
-use pcap;
+use pcap::{Capture, Active, Offline};
+use pnet::datalink::InterfaceType;
 use pnet::packet::{ethernet::EthernetPacket, Packet};
 use pnet::packet::ipv4::Ipv4Packet;
 
@@ -101,21 +102,43 @@ pub struct FlowStats {
 
 }
 
-pub struct Meter<T: pcap::State> {
-    handle: pcap::Capture<T>,
-    flow_cache: std::collections::HashMap<FlowID, FlowStats>,
+const ETHERTYPE_IPV4: u16 = 0x0800;
+const ETHERTYPE_IPV6: u16 = 0x08DD;
+
+enum PcapHandle {
+    InterfaceSource(Capture<Active>),
+    FileSource(Capture<Offline>)
 }
 
-impl<T: pcap::State> Meter<T> {
-    pub fn consume(buf: &[u8]) {
-        let eth_pdu: Option<EthernetPacket<'_>> = EthernetPacket::new(buf);
-        if let Some(eth_pdu) = eth_pdu {
-            // can we check the underlying ethernet type??
-            // would save us some headache about trying out a bunch of different options
-            let ip_pdu: Option<Ipv4Packet<'_>> = Ipv4Packet::new(eth_pdu.payload());
-            // build ipv4 flow id
-            if ip_pdu.is_some() {}
-            
+pub struct Meter {
+    handle: PcapHandle,
+    flow_cache: Option<std::collections::HashMap<FlowID, FlowStats>>,
+}
+
+impl Meter {
+    pub fn new(source: &str) -> Self {
+        let path: &std::path::Path = std::path::Path::new(&source);
+        if path.exists() {
+            Meter{handle: PcapHandle::FileSource(Capture::from_file(source).unwrap()), flow_cache: None}
+        } else {
+            let dev: Capture<Active> = Capture::from_device(source).unwrap().open().unwrap();
+            Meter{handle: PcapHandle::InterfaceSource(dev), flow_cache: None}
+        }
+    }
+
+    pub fn consume(&mut self) {
+        let buf = match self.handle {
+            PcapHandle::FileSource(ref mut handle) => {handle.next_packet()},
+            PcapHandle::InterfaceSource(ref mut handle) => {handle.next_packet()}
+        };
+        if let Some(eth_pdu) = EthernetPacket::new(buf.unwrap().data) {
+            println!("{:?}", eth_pdu.get_ethertype());
+            let et = eth_pdu.get_ethertype().0;
+            match et {
+                ETHERTYPE_IPV4 => {println!("{}", et)},
+                ETHERTYPE_IPV6 => {println!("{}", et)},
+                _ => {return}
+            }
         }
     }
 }
