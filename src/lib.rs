@@ -1,8 +1,7 @@
 use pcap::{Active, Capture, Offline};
-use pnet::datalink::InterfaceType;
-use pnet::packet::ipv4::Ipv4Packet;
 use pnet::packet::{ethernet::EthernetPacket, Packet};
-use std::fmt::{self, Error};
+use pnet::packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet};
+use std::{fmt, net::IpAddr};
 
 pub fn list_devices() {
     for device in pcap::Device::list().expect("device lookup failed!") {
@@ -98,7 +97,7 @@ const ETHERTYPE_IPV4: u16 = 0x0800;
 const ETHERTYPE_IPV6: u16 = 0x08DD;
 
 enum PcapHandle {
-    InterfaceSource(Capture<Active>),
+    IfaceSource(Capture<Active>),
     FileSource(Capture<Offline>),
 }
 
@@ -111,36 +110,44 @@ impl Meter {
     pub fn new(source: &str) -> Result<Self, pcap::Error> {
         let path: &std::path::Path = std::path::Path::new(&source);
         if path.exists() {
+            let handle = Capture::from_file(source)?;
             return Result::Ok(Meter {
-                handle: PcapHandle::FileSource(Capture::from_file(source).unwrap()),
+                handle: PcapHandle::FileSource(handle),
                 flow_cache: None,
             });
         }
-        let dev: Capture<Active> = Capture::from_device(source).unwrap().open()?;
+        let dev: Capture<Active> = Capture::from_device(source)?.open()?;
         Result::Ok(Meter {
-            handle: PcapHandle::InterfaceSource(dev),
+            handle: PcapHandle::IfaceSource(dev),
             flow_cache: None,
         })
     }
 
-    pub fn consume(&mut self) {
-        let buf = match &mut self.handle {
+    pub fn consume(&mut self) -> Result<(), ()>{
+        let buf: Result<pcap::Packet<'_>, pcap::Error> = match &mut self.handle {
             PcapHandle::FileSource(handle) => handle.next_packet(),
-            PcapHandle::InterfaceSource(handle) => handle.next_packet(),
+            PcapHandle::IfaceSource(handle) => handle.next_packet(),
         };
+        if buf.is_err() {
+            println!("Should have exited!");
+        }
         if let Some(eth_pdu) = EthernetPacket::new(buf.unwrap().data) {
             println!("{:?}", eth_pdu.get_ethertype());
-            let et = eth_pdu.get_ethertype().0;
+            let et: u16 = eth_pdu.get_ethertype().0;
+            let mut src_ip: IpAddr;
+            let mut dst_ip: IpAddr;
+            let mut payload: &[u8];
             match et {
                 ETHERTYPE_IPV4 => {
-                    println!("{}", et)
+                    let ip_pdu: Option<Ipv4Packet<'_>> = Ipv4Packet::new(eth_pdu.payload());
                 }
                 ETHERTYPE_IPV6 => {
-                    println!("{}", et)
+                    let ip6_pdu: Option<Ipv6Packet<'_>> = Ipv6Packet::new(eth_pdu.payload());
                 }
-                _ => return,
+                _ => return Err(()),
             }
         }
+        Ok(())
     }
 }
 
