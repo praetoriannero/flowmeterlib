@@ -96,10 +96,16 @@ pub struct FlowStats {}
 
 const ETHERTYPE_IPV4: u16 = 0x0800;
 const ETHERTYPE_IPV6: u16 = 0x08DD;
+// const 
 
 enum PcapHandle {
     IfaceSource(Capture<Active>),
     FileSource(Capture<Offline>),
+}
+
+enum IpPdu<'a> {
+    Ip4(Ipv4Packet<'a>),
+    Ip6(Ipv6Packet<'a>)
 }
 
 pub struct Meter {
@@ -137,7 +143,10 @@ impl Meter {
             let et: u16 = eth_pdu.get_ethertype().0;
             let src_ip: IpAddr;
             let dst_ip: IpAddr;
+            let src_port: u16;
+            let dst_port: u16;
             let mut payload: &[u8];
+            let ip_pdu: IpPdu;
             match et {
                 ETHERTYPE_IPV4 => {
                     let ip_pdu: Option<Ipv4Packet<'_>> = Ipv4Packet::new(eth_pdu.payload());
@@ -151,6 +160,10 @@ impl Meter {
                 }
                 _ => return Err(()),
             }
+            // match ip_pdu {
+
+            // }
+
         }
         Ok(())
     }
