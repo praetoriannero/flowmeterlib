@@ -1,7 +1,8 @@
 use pcap::{Active, Capture, Offline};
 use pnet::packet::{ethernet::EthernetPacket, Packet};
 use pnet::packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet};
-use std::{fmt, net::IpAddr};
+use std::fmt;
+use std::net::{Ipv4Addr, IpAddr, Ipv6Addr};
 
 pub fn list_devices() {
     for device in pcap::Device::list().expect("device lookup failed!") {
@@ -134,15 +135,19 @@ impl Meter {
         if let Some(eth_pdu) = EthernetPacket::new(buf.unwrap().data) {
             println!("{:?}", eth_pdu.get_ethertype());
             let et: u16 = eth_pdu.get_ethertype().0;
-            let mut src_ip: IpAddr;
-            let mut dst_ip: IpAddr;
+            let src_ip: IpAddr;
+            let dst_ip: IpAddr;
             let mut payload: &[u8];
             match et {
                 ETHERTYPE_IPV4 => {
                     let ip_pdu: Option<Ipv4Packet<'_>> = Ipv4Packet::new(eth_pdu.payload());
+                    src_ip = IpAddr::V4(ip_pdu.as_ref().unwrap().get_source());
+                    dst_ip = IpAddr::V4(ip_pdu.as_ref().unwrap().get_destination());
                 }
                 ETHERTYPE_IPV6 => {
                     let ip6_pdu: Option<Ipv6Packet<'_>> = Ipv6Packet::new(eth_pdu.payload());
+                    src_ip = IpAddr::V6(ip6_pdu.as_ref().unwrap().get_source());
+                    dst_ip = IpAddr::V6(ip6_pdu.as_ref().unwrap().get_destination());
                 }
                 _ => return Err(()),
             }
